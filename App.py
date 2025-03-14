@@ -72,7 +72,12 @@ with st.form("prediction_form"):
         
         # Create SHAP Waterfall Plot
         plt.figure(figsize=(12, 6))  # Adjusted size for better readability
-        plt.style.use('seaborn')  # Use a professional style
+        
+        # Try to use seaborn style, fall back to default if it fails
+        try:
+            plt.style.use('seaborn')
+        except OSError:
+            plt.style.use('default')
         
         feature_names = ["Age", "Frailty Score", "Vertebral Fracture", "Hospital Stay", 
                          "Falls History", "STEADI Score", "Weight Loss", "Albumin Level",
