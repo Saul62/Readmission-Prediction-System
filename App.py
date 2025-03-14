@@ -15,6 +15,30 @@ def load_model():
 
 model = load_model()
 
+# Load or create a background dataset for SHAP Summary Plot
+# For demonstration, you can create a dummy dataset with similar features.
+# In practice, you should use your training dataset or a representative subset.
+@st.cache_data
+def load_background_data():
+    # Replace this with your actual training dataset or a subset
+    np.random.seed(42)
+    num_samples = 100  # Number of background samples for SHAP
+    background_data = pd.DataFrame({
+        "Age": np.random.randint(50, 90, num_samples),
+        "Frailty Score": np.random.uniform(0, 1, num_samples),
+        "Vertebral Fracture": np.random.choice([0, 1], num_samples),
+        "Hospital Stay": np.random.randint(1, 30, num_samples),
+        "Falls History": np.random.choice([0, 1], num_samples),
+        "STEADI Score": np.random.randint(0, 10, num_samples),
+        "Weight Loss": np.random.choice([0, 1], num_samples),
+        "Albumin Level": np.random.uniform(20, 60, num_samples),
+        "Renal Disease": np.random.choice([0, 1], num_samples),
+        "Pulmonary Disease": np.random.choice([0, 1], num_samples)
+    })
+    return background_data
+
+background_data = load_background_data()
+
 # Page title
 st.title("Patient Readmission Risk Prediction System")
 st.write("Please input patient information for prediction")
@@ -53,8 +77,8 @@ with st.form("prediction_form"):
         probability = model.predict_proba(input_data)
 
         # Calculate SHAP values
-        explainer = shap.TreeExplainer(model)
-        shap_values = explainer.shap_values(input_data)
+        explainer = shap.TreeExplainer(model, background_data)  # Use background data for SHAP
+        shap_values = explainer.shap_values(background_data)  # Compute SHAP values for background data
         
         # Display results
         st.write("---")
@@ -67,24 +91,22 @@ with st.form("prediction_form"):
             st.success("Prediction: Low Risk of Readmission")
             st.write(f"Readmission Probability: {probability[0][1]:.2%}")
 
-        # Display SHAP waterfall plot
+        # Display SHAP Summary Plot
         st.write("---")
-        st.subheader("Feature Contribution Analysis")
+        st.subheader("Feature Contribution Analysis (Global)")
         
-        # Create SHAP waterfall plot
+        # Create SHAP Summary Plot
         plt.figure(figsize=(12, 8))
         
         feature_names = ["Age", "Frailty Score", "Vertebral Fracture", "Hospital Stay", 
-                        "Falls History", "STEADI Score", "Weight Loss", "Albumin Level",
-                        "Renal Disease", "Pulmonary Disease"]
+                         "Falls History", "STEADI Score", "Weight Loss", "Albumin Level",
+                         "Renal Disease", "Pulmonary Disease"]
         
-        shap.waterfall_plot(
-            shap.Explanation(
-                values=shap_values[1][0] if isinstance(shap_values, list) else shap_values[0],
-                base_values=explainer.expected_value[1] if isinstance(explainer.expected_value, list) else explainer.expected_value,
-                data=input_data[0],
-                feature_names=feature_names
-            ),
+        # Use shap.summary_plot for the background dataset
+        shap.summary_plot(
+            shap_values[1] if isinstance(shap_values, list) else shap_values,  # Use class 1 SHAP values for binary classification
+            background_data,
+            feature_names=feature_names,
             show=False
         )
         
@@ -99,10 +121,10 @@ with st.form("prediction_form"):
         summary_data = {
             "Feature": feature_names,
             "Value": [age, frailty, "Yes" if vertebral == 1 else "No", 
-                     hospital_stay, "Yes" if falls == 1 else "No",
-                     steadi, "Yes" if weight_loss == 1 else "No", 
-                     albumin, "Yes" if renal == 1 else "No",
-                     "Yes" if pulmonary == 1 else "No"]
+                      hospital_stay, "Yes" if falls == 1 else "No",
+                      steadi, "Yes" if weight_loss == 1 else "No", 
+                      albumin, "Yes" if renal == 1 else "No",
+                      "Yes" if pulmonary == 1 else "No"]
         }
         st.table(pd.DataFrame(summary_data))
 
@@ -131,4 +153,4 @@ st.sidebar.info(
     "2. Click 'Predict' button\n"
     "3. System will display readmission risk and probability\n"
     "4. Results are for reference only, please follow medical advice"
-) 
+)
